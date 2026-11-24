@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Board physics · results</title><style>
+:root{color-scheme:light;font:16px/1.5 system-ui,sans-serif;color:#192f37;background:#fafaf6}body{max-width:1080px;margin:2rem auto;padding:0 1rem}h1{font-size:clamp(1.65rem,4vw,2.35rem);margin:0}header{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #9cada9;padding-bottom:.6rem}a{color:#235d65}label{display:inline-grid;gap:.2rem;margin:.65rem 1rem .65rem 0;font-weight:600}select{font:inherit;padding:.3rem;max-width:90vw}canvas{width:100%;height:auto;border:1px solid #b6bfbb;background:#fff;display:block}output{display:block;margin:.25rem 0}.scale{display:inline-block;width:7rem;height:.6rem;background:linear-gradient(90deg,#2154a6,#31a5a5,#f4c54c,#c33727)}small{font-size:.875rem}</style>
+<header><h1>Board physics</h1><a href="results.json">Numerical results</a></header>
+<label>Layer<select id="layer"></select></label><label>Quantity<select id="field"></select></label>
+<canvas id="map" width="1040" height="630" aria-label="Copper geometry and selected scalar field"></canvas>
+<output id="scale"></output><output id="cursor"></output>
+<section id="spectrum"><h2>Power-port impedance</h2><canvas id="graph" width="1040" height="260"></canvas><output id="legend"></output><a href="impedance.csv">Frequency table</a></section>
+<section id="lines" hidden><h2>Transmission lines</h2></section>
+<section id="vias" hidden><h2>Ground via placement</h2><a href="via-proposals.csv">Selected locations</a> · <a href="via-candidates.csv">Per-step ranking</a></section>
+<script src="data.js"></script><script>
+"use strict";
+const data=window.boardView, get=id=>document.getElementById(id), layer=get("layer"), field=get("field");
+const outline=data.outline.flatMap(p=>p.shell),extent=(arr,axis)=>arr.reduce((a,p)=>[Math.min(a[0],p[axis]),Math.max(a[1],p[axis])],[Infinity,-Infinity]);
+const [xmin,xmax]=extent(outline,0),[ymin,ymax]=extent(outline,1),canvas=get("map"),ctx=canvas.getContext("2d");
+const zoom=Math.min((canvas.width-24)/(xmax-xmin),(canvas.height-24)/(ymax-ymin));
+const x0=(canvas.width-zoom*(xmax-xmin))/2,y0=(canvas.height-zoom*(ymax-ymin))/2;
+const pos=(x,y)=>[x0+zoom*(x-xmin),y0+zoom*(y-ymin)];
+function copper(rings){ctx.beginPath();for(const ring of rings){ring.forEach(([x,y],i)=>ctx[i?"lineTo":"moveTo"](...pos(x,y)));ctx.closePath()}ctx.fill("evenodd")}
+function option(select,name,value=name){select.add(new Option(name,value))}
+data.layers.forEach(l=>option(layer,l));
+if (data.stitch_count) get("vias").hidden=false;
+for (const line of data.lines || []) {
+  const panel=get("lines"); panel.hidden=false;
+  const title=document.createElement("h3"); title.textContent=line.name;
+  const detail=document.createElement("p");
+  detail.textContent=line.length_mm.map(v=>v.toFixed(3)+" mm").join(" / ")+" · "+line.time_ps.map(v=>v.toFixed(2)+" ps").join(" / ");
+  if (line.length_mm.length===2) detail.append(" · skew "+line.skew_ps.toFixed(2)+" ps");
+  const model=document.createElement("p"); model.textContent=line.propagation_model;
+  const downloads=document.createElement("p");
+  for (const file of line.files) {
+    const link=document.createElement("a");link.href=file;link.textContent=file;
+    downloads.append(link,"  ");
+  }
+  panel.append(title,detail,model,downloads);
+}
+function populate(){let old=field.value;field.replaceChildren();option(field,"Copper only","");data.maps.forEach((m,i)=>{if(m.layer===layer.value)option(field,m.name+" ("+m.unit+")",String(i))});if([...field.options].some(o=>o.value===old))field.value=old;else if(field.options.length>1)field.selectedIndex=1;draw()}
+const palette=[[33,84,166],[49,165,165],[244,197,76],[195,55,39]];
+function color(n){let p=Math.max(0,Math.min(2.999,n*3)),i=Math.floor(p);return "rgb("+palette[i].map((v,k)=>Math.round(v+(p-i)*(palette[i+1][k]-v))).join(",")+")"}
+function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#e9eeea";for(const p of data.outline)copper([p.shell,...p.holes]);ctx.fillStyle="#a8beba";data.metal[layer.value].forEach(copper);let m=data.maps[field.value];get("scale").replaceChildren();if(!m)return;let [lo,hi]=extent(m.points,2);let r=Math.max(2,Math.min(6,zoom*.4));for(const [x,y,v] of m.points){ctx.fillStyle=color((v-lo)/(hi-lo||1));let p=pos(x,y);ctx.fillRect(p[0]-r/2,p[1]-r/2,r,r)}let bar=document.createElement("span");bar.className="scale";get("scale").append(lo.toPrecision(4)+" ",bar," "+hi.toPrecision(4)+" "+m.unit)}
+canvas.onmousemove=e=>{let b=canvas.getBoundingClientRect(),x=xmin+((e.clientX-b.left)*canvas.width/b.width-x0)/zoom,y=ymin+((e.clientY-b.top)*canvas.height/b.height-y0)/zoom;get("cursor").textContent=x.toFixed(2)+", "+y.toFixed(2)+" mm"};
+layer.onchange=populate;field.onchange=draw;populate();
+if(!data.pdn.length)get("spectrum").hidden=true;else{const g=get("graph").getContext("2d"),series=data.pdn.map(p=>p.frequency_Hz.map((f,i)=>[Math.log10(f),Math.log10(p.z_abs_ohm[i])])),[a,b]=extent(series.flat(),0),[c,d]=extent(series.flat(),1);const X=x=>60+950*(x-a)/(b-a||1),Y=y=>220-195*(y-c)/(d-c||1);g.font="13px system-ui";g.fillStyle="#243c46";for(let x=Math.ceil(a);x<=b;x++)g.fillText("10^"+x,X(x)-10,244);for(let y=Math.ceil(c);y<=d;y++)g.fillText("10^"+y,7,Y(y));g.fillText("Ω",12,15);g.fillText("Hz",1000,244);const names=[];series.forEach((s,i)=>{g.strokeStyle=color(i/Math.max(1,series.length-1));g.lineWidth=2;g.beginPath();s.forEach(([x,y],j)=>g[j?"lineTo":"moveTo"](X(x),Y(y)));g.stroke();names.push(data.pdn[i].name+(data.pdn[i].ripple_pp_V!=null?" · "+(1000*data.pdn[i].ripple_pp_V).toPrecision(4)+" mV pp":""))});get("legend").textContent=names.join("   /   ")}
+</script></html>
