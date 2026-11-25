@@ -1,24 +1,26 @@
-# KiCad PCB Physics
+# KiCad基板の物理解析
 
-Calculate voltage drop, heat flow and power-port impedance from a filled KiCad board. An offline report overlays the results on individual copper layers. Layout and operating conditions are separate inputs, so the same load case can be applied to several revisions. [日本語](README.ja.md)
+**日本語** | [English](README.en.md)
 
-## Features and validation
+ゾーンを充填したKiCad基板から電圧降下、発熱、電源端子のインピーダンスを計算します。ローカルのHTMLで層を切り替え、銅箔に分布を重ねて表示できます。基板と負荷・材料の条件を別ファイルに指定するので、同じ条件で改訂前後を比較できます。
 
-| Study | What you can inspect | Validation status |
+## 解析機能と検証状況
+
+| 解析 | 確認できること | 検証状態 |
 |---|---|---|
-| Whole-board heat | Layer and package temperatures from device and copper losses. Specify air temperature, convection and package-to-air resistance. | **Validated on coupons** for steady conduction, energy balance and mesh refinement. Package contacts and cooling need experimental data. |
-| Conductor resistance | Terminal voltage, via current, current density, DC loss and AC skin effect. | **Validated on coupons** against a uniform strip and a through-thickness diffusion solution. |
-| Emission and pickup | Near fields, small-loop radiation and received voltage for prescribed incident fields and harness terminations. | **Experimental** for a populated board. Elementary source and receiving contours have analytic checks. |
-| Reference-plane current | Frequency-dependent return spread, plane voltage and reference gaps beneath a trace. | **Experimental** for real planes. Two-foil current division has a closed-form check. |
-| Power distribution | Mounted capacitor loops, coupled branch impedance, bias-dependent capacitance and ripple from a periodic current waveform. | **Validated** for the passive network against ngspice. Extraction of installed inductance is **experimental**. |
-| Transmission lines | Ordered trace, barrel and package lengths, propagation, skew, spatial cross sections and single-ended/mixed-mode Touchstone files. | **Validated on uniform coupons** for quasi-static impedance and network conversion. Slot, loss and launch predictions are **experimental**. |
-| Ground stitch placement | Rank legal sites by incremental resistance, plane voltage, modeled loop inductance or ground-contact deficit. Export overlays, rankings and an optional new board copy. | **Validated on resistive and inductive coupons**. Real-board loop fields, neck scoring and predicted marginal gains are **experimental**. |
+| 全板熱 | 部品損失と銅損から全層・部品の定常温度を求める。気温・対流係数・放熱片経由の熱抵抗を指定できる。 | 熱伝導・収支・格子収束は試験片で**検証済み**。接触熱抵抗と風量は実機の条件が必要。 |
+| 配線抵抗 | 2点間抵抗、端子電圧、ビア電流、電流密度、表皮効果による交流抵抗の増加。 | 一様導体の直流抵抗と厚さ方向の拡散解で**検証済み**。 |
+| 放射・受信 | 近傍界、微小ループの放射、外来電磁界やハーネスから誘起される端子電圧。 | 実基板への適用は**実験的**。単純な放射源・受信ループを解析解と照合。 |
+| 基準面の戻り電流 | 周波数別の電流の広がり、面内電位、配線直下で基準面が途切れる場所。 | 実基板の推定は**実験的**。2枚の箔の電流分担を解析解と照合。 |
+| 電源インピーダンス | コンデンサーまでの往復配線、相互結合、実効容量、ESR、ESLを含めた周波数特性と電流波形に対するリップル。 | 受動回路の数値解はngspiceで**検証済み**。実装インダクタンス抽出は**実験的**。 |
+| 伝送線路・差動ペア | 線路・ビア・指定パッケージの長さ、遅延、スキュー、位置ごとの断面インピーダンス、単端・混合モードのTouchstone出力。 | 一様断面とモード変換を試験片で検証。スリット、減衰、実装部の応答は実験的。 |
+| GNDビア配置 | 候補位置の間隔を検査し、抵抗・電位差・ループインダクタンス・銅箔への接続の改善量を1本ずつ再計算。重ね表示、CSV、指定時の別名基板を出力。 | 単純なビア群で抵抗とインダクタンスを検証。実基板の高周波帰路、細首の判定、微小な改善量は実験的。 |
 
-[Coupon geometries, errors and tolerances](VALIDATION.md)
+[検証に使った形状と誤差（英語）](VALIDATION.md)
 
-## Install and run
+## 導入と実行
 
-Use Python 3.10 or later and KiCad with the pcbnew Python bindings. Set `KICAD_PYTHON` to the interpreter that can import pcbnew. For independent circuit verification install ngspice and place it on the search path, or set `NGSPICE_BIN`. Without ngspice one integration test is skipped. LTspice is an optional separate installation.
+Python 3.10以降、pcbnewを使えるKiCadが必要です。`KICAD_PYTHON` にpcbnewを読み込めるPythonを指定します。回路照合に使うngspiceはPATHに置くか、`NGSPICE_BIN` に指定してください。ngspiceがない環境では結合テスト1件がスキップされます。LTspiceも別途設定できます。
 
 ```sh
 python3 -m venv .venv
@@ -33,20 +35,20 @@ done
 python examples/plot_buck.py output/buck output/comparison.svg
 ```
 
-For your own board use `pcb-physics BOARD.kicad_pcb CONDITIONS.json OUTPUT`. Open `index.html` in that output folder, keeping `data.js` beside it. Inspect `results.json`, `impedance.csv` and `provenance.json` for numerical results and input hashes. The generator in [examples/generate.py](examples/generate.py) illustrates additional analyses, including local transient templates and simulator parameters. [Study settings](STUDIES.md)
+任意の基板には `pcb-physics BOARD.kicad_pcb CONDITIONS.json OUTPUT` を使います。出力した `index.html` をブラウザーで開き、同じ場所に `data.js` を置いてください。数値は `results.json` と `impedance.csv`、入力ハッシュは `provenance.json` にあります。追加の電磁界・回路解析条件は[解析条件の設定方法（英語）](STUDIES.md)と[試験片の生成例](examples/generate.py)にあります。
 
-## Example output
+## 出力例
 
-The fictitious buck coupon has a half bridge, winding, output reservoir and an input bypass connected through a bottom return strip. Only the input bypass and its return fanout move. Under the same 1 MHz, 1 A return excitation, moving the bypass from 10.5 to 2.5 mm from the input pin reduces the RMS return spread from 2.67 to 1.64 mm. The extracted loop term falls from 16.15 to 7.28 nH. With the specified steady losses, the predicted board peaks are 91.68 and 91.23 °C. The paired thermal and current maps share their respective scales.
+架空の降圧回路にハーフブリッジ、コイル、出力コンデンサーと裏面の帰路を設け、入力コンデンサーとその帰路の引き出しを移動しました。入力ピンまでの距離を10.5 mmから2.5 mmに縮めると、ループインダクタンスの計算値は16.15 nHから7.28 nHに、1 MHz・1 Aでの戻り電流の広がり（実効値）は2.67 mmから1.64 mmに減りました。同一損失での基板最高温度は91.68 ℃と91.23 ℃です。温度図同士と電流密度図同士はそれぞれ同じ色尺度で比較できます。
 
-The second generator, `examples/generate_pair.py`, builds a nominal 90 Ω pair with a deliberate jog and a split in the reference plane. It also includes a two-foil via-placement study. Use the same command with its `pair.kicad_pcb` and `settings.json`. The HTML links to the Touchstone files, selected via coordinates and per-step rankings.
+追加の作例 `examples/generate_pair.py` は、90 Ωを狙った差動ペアに蛇行と基準プレーンのスリットを設け、2層のGNDビア候補も比較します。生成した `pair.kicad_pcb` と `settings.json` を同じコマンドに渡すと、HTMLでの重ね表示、Touchstoneファイル、座標と改善量のCSVを確認できます。
 
-![Input impedance curves and top temperature and bottom return-current maps for the near and far bypass placements](examples/images/bypass-placement.svg)
+[入力インピーダンス・表面温度・裏面の戻り電流を図で比較する（英語）](examples/images/bypass-placement.svg)
 
-## Scope and limits
+## 適用範囲と限界
 
-Use filled zones and refine the mesh at narrow tracks, slots and via transitions. Clipping a plane changes its return path. The symmetric skin model omits proximity loss and copper roughness. High-frequency fields depend on the assumed return contour, excitation and enclosure. Thermal mesh convergence applies to the specified materials and cooling boundaries. Validate package temperatures, absolute emissions and ringing on hardware. The generated reports and geometry caches contain recoverable board geometry.
+狭い配線、スリット、ビア付近は格子を細かくして比較してください。基準面の切り出し境界は帰路を変えます。表皮効果のモデルでは近接効果と表面粗さを省略しています。電磁界・放射は帰路、励振、筐体に依存し、熱解析は入力した損失と冷却条件に依存します。接合温度・放射の絶対値・リンギングは試作で確認してください。出力HTMLの付属データと形状キャッシュから基板形状を復元できます。
 
-## License
+## ライセンス
 
-Original code and example artwork are distributed under the [MIT license](LICENSE). External solvers and libraries retain their own [licenses](DEPENDENCIES.md).
+コードと作例の図は[MITライセンス](LICENSE)です。依存ライブラリー・別途実行するソルバーの条件は[依存ソフトのライセンス一覧（英語）](DEPENDENCIES.md)に記載しています。
