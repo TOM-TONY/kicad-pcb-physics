@@ -37,6 +37,8 @@ python examples/plot_buck.py output/buck output/comparison.svg
 
 任意の基板には `pcb-physics BOARD.kicad_pcb CONDITIONS.json OUTPUT` を使います。出力した `index.html` をブラウザーで開き、同じ場所に `data.js` を置いてください。数値は `results.json` と `impedance.csv`、入力ハッシュは `provenance.json` にあります。追加の電磁界・回路解析条件は[解析条件の設定方法（英語）](STUDIES.md)と[試験片の生成例](examples/generate.py)にあります。
 
+測定値に読取り幅がある場合は、`pcb-calibrate` で複数の測定を同時に満たすモデルを抽出できます。加熱・冷却の架空データを使った[実行例と出力の読み方](STUDIES.md#calibration-from-measured-intervals)があります。
+
 ## 出力例
 
 架空の降圧回路にハーフブリッジ、コイル、出力コンデンサーと裏面の帰路を設け、入力コンデンサーとその帰路の引き出しを移動しました。入力ピンまでの距離を10.5 mmから2.5 mmに縮めると、ループインダクタンスの計算値は16.15 nHから7.28 nHに、1 MHz・1 Aでの戻り電流の広がり（実効値）は2.67 mmから1.64 mmに減りました。同一損失での基板最高温度は91.68 ℃と91.23 ℃です。温度図同士と電流密度図同士はそれぞれ同じ色尺度で比較できます。

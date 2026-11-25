@@ -59,3 +59,28 @@ pcb-physics BOARD.kicad_pcb SETTINGS.json OUT --stitch-case "Foil connection" --
 The exporter refuses an existing destination, places the chosen through vias and refills the copy. Recheck its current paths and run KiCad DRC with the project's rules.
 
 The CLI snapshots the board and settings before extraction. A cancelled or failed analysis keeps the last completed report. When reading a reused output directory, use the files listed in the current `provenance.json` and check their SHA-256 digests. A missing completion record indicates that the installation of the report is incomplete. New board proposals use the same input snapshot as the analysis.
+
+## Calibration from measured intervals
+
+Run `python examples/generate_calibration.py /tmp/synthetic-sweep.json`, then
+`pcb-calibrate /tmp/synthetic-sweep.json /tmp/calibration-result.json`.
+The synthetic experiment uses a heating pulse, a steady reading, and a separate
+cooling measurement. Replace its observations and forward simulations to fit
+a different experiment. Use the same units, boundary conditions and probes for
+measurements and simulations. Record digitizing resolution in the intervals.
+
+Each run contains a complete parameter vector and scalar predictions. Every
+observation with role `fit` must lie within its specified interval for a run to
+be accepted. The diagnostic score is the largest interval miss divided by the
+corresponding positive scale. If the sweep misses every interval the command
+writes diagnostics, exits with status 1 and emits no target ranges. A `check`
+observation evaluates predictions independently of selection. All compatible
+parameter combinations remain in the output.
+
+For a target, `model_range` spans the accepted simulated values.
+`residual_transfer_range` adds the observed signed error intervals from
+`error_from` to the corresponding prediction in each run. Empty source lists
+produce a null transfer range. A user must justify transferring an error to a
+new geometry or operating condition. Shared units alone do not establish that
+relationship. These ranges describe the supplied grid and error model. They
+are neither production limits nor statistical confidence intervals.

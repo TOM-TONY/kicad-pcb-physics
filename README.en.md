@@ -37,6 +37,8 @@ python examples/plot_buck.py output/buck output/comparison.svg
 
 For your own board use `pcb-physics BOARD.kicad_pcb CONDITIONS.json OUTPUT`. Open `index.html` in that output folder, keeping `data.js` beside it. Inspect `results.json`, `impedance.csv` and `provenance.json` for numerical results and input hashes. The generator in [examples/generate.py](examples/generate.py) illustrates additional analyses, including local transient templates and simulator parameters. [Study settings](STUDIES.md)
 
+Use `pcb-calibrate` to retain model runs consistent with multiple measured intervals and inspect errors on independent observations. [Synthetic heating and cooling example](STUDIES.md#calibration-from-measured-intervals)
+
 ## Example output
 
 The fictitious buck coupon has a half bridge, winding, output reservoir and an input bypass connected through a bottom return strip. Only the input bypass and its return fanout move. Under the same 1 MHz, 1 A return excitation, moving the bypass from 10.5 to 2.5 mm from the input pin reduces the RMS return spread from 2.67 to 1.64 mm. The extracted loop term falls from 16.15 to 7.28 nH. With the specified steady losses, the predicted board peaks are 91.68 and 91.23 °C. The paired thermal and current maps share their respective scales.
